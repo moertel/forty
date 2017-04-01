@@ -1,0 +1,19 @@
+require 'forty/rake/task'
+require 'forty'
+
+sleep 10
+
+Forty.configure do |config|
+  config.master_username = 'postgres'
+  config.schemas = ['postgres']
+  config.acl_file = 'acl.json'
+  config.logger.level = ::Logger::DEBUG
+end
+
+Forty.database do |db|
+  db.host = 'postgres'
+  db.port = 5432
+  db.user = 'postgres'
+  db.password = 'postgres'
+  db.database = 'postgres'
+end

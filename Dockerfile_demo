@@ -1,0 +1,16 @@
+FROM ruby:2.3.1
+
+COPY ./Gemfile Gemfile
+COPY ./forty.gemspec forty.gemspec
+RUN bundle install
+
+COPY ./lib lib
+COPY ./Rakefile Rakefile
+COPY ./example/acl.json acl.json
+COPY ./example/Rakefile Rakefile
+COPY ./example/sync.rb sync.rb
+
+RUN gem build forty.gemspec
+RUN gem install forty-0.1.0.gem
+
+CMD ["rake", "acl:sync:all"]

@@ -1,0 +1,8 @@
+{
+    "users": {
+        "postgres": {},
+        "example_user": {
+            "password": "secret"
+        }
+    }
+}
