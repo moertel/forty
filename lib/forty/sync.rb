@@ -21,6 +21,7 @@ module Forty
       @master_username = master_username or raise Error, 'No master username provided'
       @production_schemas = production_schemas or raise Error, 'No production schemas provided'
       @system_groups = ["pg_signal_backend"]
+      @system_users = ["postgres"]
       @acl_config = acl_config or raise Error, 'No acl config provided'
       @acl_config['users'] ||= {}
       @acl_config['groups'] ||= {}
@@ -43,9 +44,11 @@ module Forty
       current_users = _get_current_dwh_users.keys
       defined_users = @acl_config['users'].keys
 
-      undefined_users = (current_users - defined_users).uniq.compact
+      undefined_users = (current_users - defined_users - @system_users).uniq.compact
       missing_users = (defined_users - current_users).uniq.compact
 
+      @logger.debug("Undefined users: #{undefined_users}")
+      @logger.debug("Missing users: #{missing_users}")
       undefined_users.each { |user| _delete_user(user) }
 
       missing_users.each do |user|
@@ -63,8 +66,7 @@ module Forty
       current_groups = _get_current_dwh_groups().keys
       defined_groups = @acl_config['groups'].keys
 
-      pg_system_groups = ['pg_signal_backend']
-      undefined_groups = (current_groups - defined_groups - pg_system_groups).uniq.compact
+      undefined_groups = (current_groups - defined_groups - @system_groups).uniq.compact
       missing_groups = (defined_groups - current_groups).uniq.compact
 
       undefined_groups.each { |group| _delete_group(group) }
@@ -229,8 +231,8 @@ module Forty
     end
 
     def _check_user_unknown(current_users, defined_users)
-      @logger.debug("Check whether users are in sync. Current: #{current_users}; Defined: #{defined_users}")
-      raise Error, 'Users are out of sync!' if _mismatch?(current_users, defined_users)
+      @logger.debug("Check whether users are in sync. Current: #{current_users}; Defined: #{defined_users}; System: #{@system_users}")
+      raise Error, 'Users are out of sync!' if _mismatch?(current_users - @system_users, defined_users)
     end
 
     def _mismatch?(current, defined)
