@@ -4,16 +4,16 @@ require 'forty'
 sleep 10
 
 Forty.configure do |config|
-  config.master_username = 'postgres'
+  config.master_username = ENV['SOME_APP_POSTGRES_USER']
   config.schemas = ['postgres']
   config.acl_file = 'acl.json'
   config.logger.level = ::Logger::DEBUG
 end
 
 Forty.database do |db|
-  db.host = 'postgres'
+  db.host = 'postgres_demo_db' # DNS provided by docker-compose
   db.port = 5432
-  db.user = 'postgres'
-  db.password = 'postgres'
-  db.database = 'postgres'
+  db.user = ENV['SOME_APP_POSTGRES_USER']
+  db.password = ENV['SOME_APP_POSTGRES_PASSWORD']
+  db.database = ENV['SOME_APP_POSTGRES_DB']
 end

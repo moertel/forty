@@ -1,0 +1,25 @@
+FROM ruby:2.3.1
+
+MAINTAINER Stefanie Grunwald <steffi@physics.org>
+
+###############################################################################
+# INSTALL DEPENDENCIES                                                        #
+###############################################################################
+COPY ./Gemfile Gemfile
+COPY ./forty.gemspec forty.gemspec
+RUN bundle install
+
+###############################################################################
+# COPY DEMO FILES                                                             #
+###############################################################################
+COPY ./example/acl.json acl.json
+COPY ./example/Rakefile Rakefile
+
+###############################################################################
+# BUILD AND INSTALL THE GEM                                                   #
+###############################################################################
+COPY ./lib lib
+RUN gem build forty.gemspec
+RUN gem install forty-0.1.0.gem
+
+CMD ["rake", "acl:sync:all"]

@@ -1,0 +1,24 @@
+version: '2'
+
+services:
+  postgres_demo_db:
+    image: postgres:9.6
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: demo_admin_user
+      POSTGRES_PASSWORD: demo_pa$$w0rd
+      POSTGRES_DB: forty_demo
+
+  some_app:
+    build:
+      context: .
+      dockerfile: demo_Dockerfile
+    links:
+      - postgres_demo_db
+    depends_on:
+      - postgres_demo_db
+    environment:
+      SOME_APP_POSTGRES_USER: demo_admin_user
+      SOME_APP_POSTGRES_PASSWORD: demo_pa$$w0rd
+      SOME_APP_POSTGRES_DB: forty_demo

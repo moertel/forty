@@ -1,6 +1,6 @@
 {
     "users": {
-        "postgres": {},
+        "demo_admin_user": {},
         "example_user": {
             "password": "secret"
         }
