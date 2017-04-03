@@ -60,7 +60,7 @@ module Forty
     end
 
     class Database < Base
-      ALL = 'CT'
+      ALL = 'CTc'
       CREATE = 'C'
       CONNECT = 'c'
       TEMPORARY = 'T'

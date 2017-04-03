@@ -1,13 +1,34 @@
 require 'forty/rake/task'
 require 'forty'
 
-sleep 10
+sleep 10    # wait for docker-compose to start up the Postgres DB
 
+
+# Prepare the example database to add schemas and tables.
+#
+pg = PG.connect(
+    host: 'postgres_demo_db',
+    port: 5432,
+    user: ENV['SOME_APP_POSTGRES_USER'],
+    password: ENV['SOME_APP_POSTGRES_PASSWORD'],
+    dbname: ENV['SOME_APP_POSTGRES_DB'],
+)
+
+Forty.configuration.logger.info("Create example schemas and tables")
+pg.exec("create schema if not exists some_schema;")
+pg.exec("create schema if not exists another_schema;")
+pg.exec("create table if not exists some_schema.some_table (id int);")
+pg.exec("create table if not exists another_schema.another_table (id int);")
+pg.exec("create user this_user_should_not_exist;")
+
+
+# Forty configuration
+#
 Forty.configure do |config|
   config.master_username = ENV['SOME_APP_POSTGRES_USER']
-  config.schemas = ['postgres']
+  config.schemas = ['some_schema', 'another_schema']
   config.acl_file = 'acl.json'
-  config.logger.level = ::Logger::DEBUG
+  config.logger.level = ::Logger::INFO
 end
 
 Forty.database do |db|
@@ -17,3 +38,5 @@ Forty.database do |db|
   db.password = ENV['SOME_APP_POSTGRES_PASSWORD']
   db.database = ENV['SOME_APP_POSTGRES_DB']
 end
+
+Forty.sync

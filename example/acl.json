@@ -1,8 +1,71 @@
 {
     "users": {
+        "example_user": {},
         "demo_admin_user": {},
-        "example_user": {
-            "password": "secret"
+        "some_readonly_user": {
+            "groups": [
+                "all_tables_readonly"
+            ]
+        },
+        "some_readonly_user_with_special_permissions": {
+            "groups": [
+                "all_tables_readonly"
+            ],
+            "permissions": [
+                {
+                    "type": "table",
+                    "identifiers": [
+                        "some_schema.some_table",
+                        "another_schema.*"
+                    ],
+                    "privileges": [
+                        "select",
+                        "insert"
+                    ]
+                }
+            ]
+        },
+        "some_admin_user": {
+            "groups": [
+                "readwrite_everything"
+            ]
+        }
+    },
+    "groups": {
+        "all_tables_readonly": {
+            "permissions": [
+                {
+                    "type": "table",
+                    "identifiers": [
+                        "*.*"
+                    ],
+                    "privileges": [
+                        "select"
+                    ]
+                }
+            ]
+        },
+        "readwrite_everything": {
+            "permissions": [
+                {
+                    "type": "schema",
+                    "identifiers": [
+                        "*"
+                    ],
+                    "privileges": [
+                        "all"
+                    ]
+                },
+                {
+                    "type": "table",
+                    "identifiers": [
+                        "*.*"
+                    ],
+                    "privileges": [
+                        "all"
+                    ]
+                }
+            ]
         }
     }
 }

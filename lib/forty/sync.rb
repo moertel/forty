@@ -33,11 +33,36 @@ module Forty
     end
 
     def run
+      banner()
       sync_users()
       sync_groups()
       sync_user_groups()
       sync_user_roles()
       sync_acl()
+    end
+
+    def banner
+      @logger.info(<<-BANNER)
+Starting sync...
+    ____           __       
+   / __/___  _____/ /___  __
+  / /_/ __ \\/ ___/ __/ / / /
+ / __/ /_/ / /  / /_/ /_/ /
+/_/  \\____/_/   \\__/\\__, /  Database ACL Sync
+                   /____/   v0.1.0
+
+===============================================================================
+
+Running in #{@dry_run ? 'DRY-MODE (not enforcing state)' : 'PRODUCTION-MODE (enforcing state)'}
+
+Configuration:
+    Master user:    #{@master_username}
+    Synced schemas: #{@production_schemas.join(', ')}
+    System users:   #{@system_users.join(', ')}
+    System groups:  #{@system_groups.join(', ')}
+
+===============================================================================
+BANNER
     end
 
     def sync_users
@@ -131,7 +156,7 @@ module Forty
       diverged = 0
 
       users.each do |user|
-        next if user.eql?(@master_username)
+        next if user.eql?(@master_username) or @system_users.include?(user)
 
         raise Error, "Users are not in sync #{user}" if current_user_roles[user].nil? or defined_user_roles[user].nil?
 
@@ -466,7 +491,7 @@ module Forty
         .compact
 
       if grantees.any? { |grantee| !known_grantees.include?(grantee) }
-        raise Error, 'Users or groups not in sync!'
+        raise Error, "Users or groups not in sync! Could not find #{grantees.select { |grantee| !known_grantees.include?(grantee) }.join(', ')}"
       end
 
       grantees.each do |grantee|
@@ -658,10 +683,14 @@ module Forty
       parsed_acls = {}
       raw_acl.each do |row|
         name = row['name']
-        @logger.debug("Current ACL: [#{identifier_type}] #{name} #{row['acls']}")
+        @logger.debug("Current ACL: [#{identifier_type}] '#{name}': #{row['acls']}")
         parsed_acl = _parse_current_permissions(identifier_type, row['acls'])
         parsed_acl.each do |grantee, privileges|
           unless grantee.empty?
+            if _get_current_dwh_groups().keys.include?(grantee)
+              @logger.debug("Grantee '#{grantee}' has been identified as a group")
+              grantee = "group #{grantee}"
+            end
             parsed_acls[grantee] ||= {}
             parsed_acls[grantee][name] ||= []
             parsed_acls[grantee][name].concat(privileges)
