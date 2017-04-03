@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name               = 'forty'
-  s.version            = '0.2.0'
+  s.version            = '0.2.1'
   s.default_executable = 'forty'
 
   s.licenses = ['MIT']

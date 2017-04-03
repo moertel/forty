@@ -20,6 +20,7 @@ COPY ./example/Rakefile Rakefile
 ###############################################################################
 COPY ./lib lib
 RUN gem build forty.gemspec
-RUN gem install forty-0.1.0.gem
+RUN gem install forty-0.2.1.gem
 
-CMD ["rake", "-T"]
+ENTRYPOINT ["bundle", "exec", "rake"]
+CMD ["acl:sync:all[true]"]

@@ -38,5 +38,3 @@ Forty.database do |db|
   db.password = ENV['SOME_APP_POSTGRES_PASSWORD']
   db.database = ENV['SOME_APP_POSTGRES_DB']
 end
-
-Forty.sync

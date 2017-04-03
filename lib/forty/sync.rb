@@ -2,14 +2,14 @@
 
 module Forty
 
-  def self.sync
+  def self.sync(dry_run=true)
     Forty::Sync.new(
       Forty.configuration.logger,
       Forty.configuration.master_username,
       Forty.configuration.schemas,
       Forty::ACL.new(Forty.configuration.acl_file),
       Forty.instance_variable_get(:@database),
-      false
+      dry_run
     ).run
   end
 
@@ -49,7 +49,7 @@ Starting sync...
   / /_/ __ \\/ ___/ __/ / / /
  / __/ /_/ / /  / /_/ /_/ /
 /_/  \\____/_/   \\__/\\__, /  Database ACL Sync
-                   /____/   v0.2.0
+                   /____/   v0.2.1
 
 ===============================================================================
 

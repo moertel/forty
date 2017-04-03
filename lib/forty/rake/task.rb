@@ -10,8 +10,9 @@ module Forty
         namespace :acl do
           namespace :sync do
             desc 'syncs entire acl config with database'
-            task :all, [:disable_dry_run] do
-              Forty.sync
+            task :all, [:disable_dry_run] do |t, args|
+              dry_run = args[:disable_dry_run].eql?('true') ? false : true
+              Forty.sync(dry_run)
             end
           end
         end
