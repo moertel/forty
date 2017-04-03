@@ -1,14 +1,18 @@
 # Forty
 
-Define Postgres users, groups and their permissions in a JSON file and let Forty enforce this state in your Postgres database. Forty will create users/groups which are present in the JSON file but missing from the database, and will delete users/groups which are present in the database but missing from the JSON file.
+[![Build Status](https://travis-ci.org/moertel/forty.svg?branch=master)](https://travis-ci.org/moertel/forty) [![Gem Version](https://badge.fury.io/rb/forty.svg)](https://badge.fury.io/rb/forty)
+
+Define Postgres users, groups and their permissions as code and let Forty enforce this state in your Postgres database. Forty will create users/groups which are present in the configuration file but missing from the database, and will delete users/groups which are present in the database but missing from the configuration file. An extensive example can be found [here](example/acl.json).
 
 ## Example
 
-If you have Docker installed, you can run `docker-compose -f docker-compose_demo.yml up` on your machine to see an example in action. This will spin up a Postgres instance with the system user `postgres` and another admin user `demo_admin_user`. The file [`acl.json`](example/acl.json) further specifies a user `example_user` who is not yet present in the database. When calling Forty's `sync` method, this user will be added to the database.
+If you have Docker installed, you can run `docker-compose -f docker-compose_demo.yml up` on your machine to see an example in action. This will spin up a Postgres instance with the system user `postgres` and another admin user `demo_admin_user`. The file [`acl.json`](example/acl.json) specifies a few more users and groups (and their permissions) who are not yet present in the database. When calling Forty's `sync` method, the configuration will be synced to the database.
 
 ## Usage
 
-To configure Forty, simply require it in your script and configure the library as well as a Postgres database. You will need to specify a user for the Postgres database which has access to all realms that you want to manage. In case you want to allow it to delete users, Forty will reassign objects that are defined in `Forty.configuration.schemas` to the user defined as `Forty.configuration.master_username` and delete all other objects.
+To configure Forty, simply require it in your script and configure the library as well as a Postgres database. You will need to specify a user for the Postgres database which has access to all realms that you want to manage. In case you want to allow it to delete users, Forty will reassign objects that are defined in `Forty.configuration.schemas` to the user defined as `Forty.configuration.master_username` and delete all other objects in "unmanaged" schemas.
+
+### Configuration
 
 ```ruby
 require 'forty'
@@ -26,39 +30,39 @@ Forty.database do |db|
     db.password = 'secret'
     db.database = 'postgres'
 end
+```
+
+### Execution
+
+You can either sync immediately by calling the command somewhere in your Ruby code:
+```ruby
+# ./some_ruby_script.rb
+
+require 'forty'
 
 Forty.sync  # this starts the sync immediately
 ```
 
+Or import Forty's Rake tasks and call it from elsewhere; especially useful if you want to run this in Docker:
+```ruby
+# Rakefile
+
+require 'forty/rake/task'
+```
+Which will give you the following command:
+```
+$ rake acl:sync:all
+```
+
+### ACL File
+
+Define users, groups and permissions in a JSON formatted file. (A more sophisticated example can be found [here](example/acl.json).)
 ```json
 {
     "users": {
         "some_readonly_user": {
             "groups": [
                 "all_tables_readonly"
-            ]
-        },
-        "some_readonly_user_with_special_permissions": {
-            "groups": [
-                "all_tables_readonly"
-            ],
-            "permissions": [
-                {
-                    "type": "table",
-                    "identifiers": [
-                        "some_schema.some_table",
-                        "another_schema.another_table"
-                    ],
-                    "privileges": [
-                        "select",
-                        "insert"
-                    ]
-                }
-            ]
-        },
-        "some_admin_user": {
-            "groups": [
-                "readwrite_everything"
             ]
         }
     },
@@ -72,32 +76,6 @@ Forty.sync  # this starts the sync immediately
                     ],
                     "privileges": [
                         "select"
-                    ]
-                }
-            ]
-        },
-        "readwrite_everything": {
-            "roles": [
-                "createuser",
-                "createdb"
-            ],
-            "permissions": [
-                {
-                    "type": "schema",
-                    "identifiers": [
-                        "*"
-                    ],
-                    "privileges": [
-                        "all"
-                    ]
-                },
-                {
-                    "type": "table",
-                    "identifiers": [
-                        "*.*"
-                    ],
-                    "privileges": [
-                        "all"
                     ]
                 }
             ]
@@ -122,9 +100,6 @@ Or install it yourself as:
 
     $ gem install forty
 
-## Usage
-
-Either call `Forty.sync` directly or call the Rake task `rake acl:sync:all`. An example can be found in [`example/`](example).
 
 ## Contributing
 
