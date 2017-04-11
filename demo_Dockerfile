@@ -1,7 +1,5 @@
 FROM ruby:2.3.1
 
-MAINTAINER Stefanie Grunwald <steffi@physics.org>
-
 ###############################################################################
 # INSTALL DEPENDENCIES                                                        #
 ###############################################################################
@@ -14,13 +12,14 @@ RUN bundle install
 ###############################################################################
 COPY ./example/acl.json acl.json
 COPY ./example/Rakefile Rakefile
+COPY ./example/mail_template_user_created.erb mail_template_user_created.erb
 
 ###############################################################################
 # BUILD AND INSTALL THE GEM                                                   #
 ###############################################################################
 COPY ./lib lib
 RUN gem build forty.gemspec
-RUN gem install forty-0.2.1.gem
+RUN gem install forty-0.3.0.gem
 
 ENTRYPOINT ["bundle", "exec", "rake"]
 CMD ["acl:sync:all[true]"]

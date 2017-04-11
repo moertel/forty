@@ -22,3 +22,8 @@ services:
       SOME_APP_POSTGRES_USER: demo_admin_user
       SOME_APP_POSTGRES_PASSWORD: secret
       SOME_APP_POSTGRES_DB: forty_demo
+      FORTY_MAIL_SMTP_ADDRESS: someone@example.com
+      FORTY_MAIL_SMTP_HOST: localhost
+      FORTY_MAIL_SMTP_PORT: 587
+      FORTY_MAIL_SMTP_USERNAME: someone@example.com
+      FORTY_MAIL_SMTP_PASSWORD: very_secret

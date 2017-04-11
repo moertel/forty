@@ -1,5 +1,3 @@
-# require_relative 'configuration'
-
 module Forty
 
   def self.sync(dry_run=true)
@@ -9,6 +7,7 @@ module Forty
       Forty.configuration.schemas,
       Forty::ACL.new(Forty.configuration.acl_file),
       Forty.instance_variable_get(:@database),
+      Forty.instance_variable_get(:@mailer),
       dry_run
     ).run
   end
@@ -16,7 +15,7 @@ module Forty
   class Sync
     class Error < StandardError; end
 
-    def initialize(logger, master_username, production_schemas, acl_config, executor, dry_run=true)
+    def initialize(logger, master_username, production_schemas, acl_config, executor, mailer, dry_run=true)
       @logger = logger or raise Error, 'No logger provided'
       @master_username = master_username or raise Error, 'No master username provided'
       @production_schemas = production_schemas or raise Error, 'No production schemas provided'
@@ -26,7 +25,8 @@ module Forty
       @acl_config['users'] ||= {}
       @acl_config['groups'] ||= {}
 
-      @executor   = executor   or raise Error, 'No dwh executor provided'
+      @executor = executor or raise Error, 'No database executor provided'
+      @mailer = mailer or raise Error, 'No mailer provided'
       @dry_run = dry_run
 
       @logger.warn('Dry mode disabled, executing on production') unless @dry_run
@@ -49,7 +49,7 @@ Starting sync...
   / /_/ __ \\/ ___/ __/ / / /
  / __/ /_/ / /  / /_/ /_/ /
 /_/  \\____/_/   \\__/\\__, /  Database ACL Sync
-                   /____/   v0.2.1
+                   /____/   v0.3.0
 
 ===============================================================================
 
@@ -80,8 +80,9 @@ BANNER
         roles = @acl_config['users'][user]['roles'] || []
         password = @acl_config['users'][user]['password']
         search_path = @production_schemas.join(',')
+        owner = @acl_config['users'][user]['email']
 
-        _create_user(user, password, roles, search_path)
+        _create_user(user, password, roles, search_path, owner)
       end
 
       @logger.info('All users are in sync') if (undefined_users.count + missing_users.count) == 0
@@ -308,8 +309,18 @@ BANNER
       _execute_statement("drop group #{group};")
     end
 
-    def _create_user(user, password, roles=[], search_path=nil)
+    def _create_user(user, password, roles=[], search_path=nil, owner='')
+      if password.to_s.length == 0
+        password = _generate_password()
+      end
+
       _execute_statement("create user #{user} with password '#{password}' #{roles.join(' ')};")
+
+      if owner.to_s.length > 0 and owner.include?('@')
+        @mailer.send_welcome(owner, user, password)
+      else
+        @logger.warn("Email address of user '#{user}' is empty or malformed: '#{owner}'")
+      end
 
       unless search_path.nil? or search_path.empty?
         _execute_statement("alter user #{user} set search_path to #{search_path};")

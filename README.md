@@ -32,6 +32,21 @@ Forty.database do |db|
 end
 ```
 
+In case you want to send an email with credentials and connection details to a user:
+```ruby
+Forty.mailer do |mail|
+  mail.smtp_address = 'someone@example.com' # sender address
+  mail.smtp_host = 'localhost'              # SMTP server address
+  mail.smtp_port = 587                      # SMTP server port
+  mail.smtp_username = 'someone'
+  mail.smtp_password = 'very_secret'
+  mail.smtp_authentication = :login         # refer to Ruby's mail gem for available options
+  mail.smtp_encryption = :tls               # refer to Ruby's mail gem for available options
+  mail.templates = { user_created: 'mail_template_user_created.erb' } # see example/mail_template_user_created.erb for available placeholders
+  mail.enabled = true                       # whether or not emails should be sent, defaults to false
+end
+```
+
 ### Execution
 
 You can either sync immediately by calling the command somewhere in your Ruby code:

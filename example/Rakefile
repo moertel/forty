@@ -32,9 +32,22 @@ Forty.configure do |config|
 end
 
 Forty.database do |db|
+  db.name = 'PostgresDemo' # optional, used when sending mails to DB users
   db.host = 'postgres_demo_db' # DNS provided by docker-compose
   db.port = 5432
   db.user = ENV['SOME_APP_POSTGRES_USER']
   db.password = ENV['SOME_APP_POSTGRES_PASSWORD']
   db.database = ENV['SOME_APP_POSTGRES_DB']
+end
+
+Forty.mailer do |mail|
+  mail.smtp_address = ENV['FORTY_MAIL_SMTP_ADDRESS']
+  mail.smtp_host = ENV['FORTY_MAIL_SMTP_HOST']
+  mail.smtp_port = ENV['FORTY_MAIL_SMTP_PORT']
+  mail.smtp_username = ENV['FORTY_MAIL_SMTP_USERNAME']
+  mail.smtp_password = ENV['FORTY_MAIL_SMTP_PASSWORD']
+  mail.smtp_authentication = :login
+  mail.smtp_encryption = :tls
+  mail.templates = { user_created: 'mail_template_user_created.erb' }
+  mail.enabled = false # false because this config is just for demonstration purposes; set to true in production!
 end

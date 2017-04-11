@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name               = 'forty'
-  s.version            = '0.2.1'
+  s.version            = '0.3.0'
   s.default_executable = 'forty'
 
   s.licenses = ['MIT']
@@ -21,11 +21,12 @@ Gem::Specification.new do |s|
   s.homepage = %q{https://github.com/moertel/forty}
   s.require_paths = ['lib']
   s.rubygems_version = %q{1.6.2}
-  s.summary = %q{Manage users, groups and ACL (access control lists) for AWS Redshift databases}
+  s.summary = %q{Manage users, groups and ACL (access control lists) for Postgres databases}
 
   s.add_runtime_dependency 'pg', ['>= 0.16', '< 1.0']
   s.add_runtime_dependency 'cucumber', ['>= 2.0', '< 3.0']
   s.add_runtime_dependency 'rake', ['>= 10.1', '< 12.0']
+  s.add_runtime_dependency 'mail', ['>= 2.6.0', '< 3.0']
 
   s.add_development_dependency 'rspec', ['>= 3.1', '< 4.0']
   s.add_development_dependency 'rspec-collection_matchers', ['>= 1.1.2', '< 2.0']

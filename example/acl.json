@@ -3,6 +3,7 @@
         "example_user": {},
         "demo_admin_user": {},
         "some_readonly_user": {
+            "email": "someone@example.com",
             "groups": [
                 "all_tables_readonly"
             ]
