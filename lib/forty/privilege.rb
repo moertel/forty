@@ -44,7 +44,7 @@ module Forty
     class Table < Base
       ALL = 'arwdDxt'
       SELECT = 'r'
-      UPDATE = 'W'
+      UPDATE = 'w'
       INSERT = 'a'
       DELETE = 'd'
       TRUNCATE = 'D'
