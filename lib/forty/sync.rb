@@ -1,6 +1,6 @@
 module Forty
 
-  def self.sync(dry_run=true)
+  def self.sync(dry_run=true, strict=true)
     Forty::Sync.new(
       Forty.configuration.logger,
       Forty.configuration.master_username,
@@ -8,14 +8,15 @@ module Forty
       Forty::ACL.new(Forty.configuration.acl_file),
       Forty.instance_variable_get(:@database),
       Forty.instance_variable_get(:@mailer),
-      dry_run
+      dry_run,
+      strict
     ).run
   end
 
   class Sync
     class Error < StandardError; end
 
-    def initialize(logger, master_username, production_schemas, acl_config, executor, mailer, dry_run=true)
+    def initialize(logger, master_username, production_schemas, acl_config, executor, mailer, dry_run=true, strict=true)
       @logger = logger or raise Error, 'No logger provided'
       @master_username = master_username or raise Error, 'No master username provided'
       @production_schemas = production_schemas or raise Error, 'No production schemas provided'
@@ -28,7 +29,9 @@ module Forty
       @executor = executor or raise Error, 'No database executor provided'
       @mailer = mailer or raise Error, 'No mailer provided'
       @dry_run = dry_run
+      @strict = strict
 
+      @logger.warn('Strict mode disabled, skipping errors silently') unless @strict
       @logger.warn('Dry mode disabled, executing on production') unless @dry_run
     end
 
@@ -82,7 +85,12 @@ BANNER
         search_path = @production_schemas.join(',')
         owner = @acl_config['users'][user]['email']
 
-        _create_user(user, password, roles, search_path, owner)
+        begin
+          _create_user(user, password, roles, search_path, owner)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
       end
 
       @logger.info('All users are in sync') if (undefined_users.count + missing_users.count) == 0
@@ -95,8 +103,23 @@ BANNER
       undefined_groups = (current_groups - defined_groups - @system_groups).uniq.compact
       missing_groups = (defined_groups - current_groups).uniq.compact
 
-      undefined_groups.each { |group| _delete_group(group) }
-      missing_groups.each   { |group| _create_group(group) }
+      undefined_groups.each do |group|
+        begin
+          _delete_group(group)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
+      end
+
+      missing_groups.each do |group|
+        begin
+          _create_group(group)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
+      end
 
       @logger.info('All groups are in sync') if (undefined_groups.count + missing_groups.count) == 0
     end
@@ -119,8 +142,23 @@ BANNER
         undefined_assignments = (current_list - defined_list).uniq.compact
         missing_assignments = (defined_list - current_list).uniq.compact
 
-        undefined_assignments.each { |user| _remove_user_from_group(user, group) }
-        missing_assignments.each   { |user| _add_user_to_group(user, group) }
+        undefined_assignments.each do |user|
+          begin
+            _remove_user_from_group(user, group)
+          rescue PG::Error => err
+            raise err if @strict
+            next
+          end
+        end
+
+        missing_assignments.each do |user|
+          begin
+            _add_user_to_group(user, group)
+          rescue PG::Error => err
+            raise err if @strict
+            next
+          end
+        end
 
         current_group_diverged = (undefined_assignments.count + missing_assignments.count)
         diverged += current_group_diverged
@@ -142,7 +180,14 @@ BANNER
             @executor.execute("set search_path=#{schema}")
             tables = @executor.execute("select tablename from pg_tables where schemaname='#{schema}'").map { |row| "#{schema}.#{row['tablename']}" }
             nonowned_tables_by_user = tables.uniq - tables_owned_by_user
-            nonowned_tables_by_user.each { |table| _execute_statement("alter table #{table} owner to #{user};") }
+            nonowned_tables_by_user.each do |table|
+              begin
+                _execute_statement("alter table #{table} owner to #{user};")
+              rescue PG::Error => err
+                raise err if @strict
+                next
+              end
+            end
           end
         end
       end
@@ -167,8 +212,23 @@ BANNER
         current_roles_diverged = (undefined_roles.count + missing_roles.count)
         diverged += current_roles_diverged
 
-        undefined_roles.each { |role| _execute_statement("alter user #{user} no#{role};") }
-        missing_roles.each   { |role| _execute_statement("alter user #{user} #{role};") }
+        undefined_roles.each do |role|
+          begin
+            _execute_statement("alter user #{user} no#{role};")
+          rescue PG::Error => err
+            raise err if @strict
+            next
+          end
+        end
+
+        missing_roles.each do |role|
+          begin
+            _execute_statement("alter user #{user} #{role};")
+          rescue PG::Error => err
+            raise err if @strict
+            next
+          end
+        end
 
         @logger.debug("Roles of #{user} are in sync") if current_roles_diverged == 0
       end
@@ -280,7 +340,7 @@ BANNER
         rescue PG::UndefinedTable => e
           @logger.error("#{e.class}: #{e.message}" )
           retry unless attempts > 3
-          raise Error, 'Maximum number of attempts exceeded, giving up'
+          raise e, 'Maximum number of attempts exceeded, giving up'
         end
       end
     end
@@ -301,7 +361,12 @@ BANNER
       acl.each do |type, acl|
         unless acl.nil? or acl.empty?
           acl.each do |identifier, permissions|
-            _revoke_privileges(full_group_name, type, identifier, permissions)
+            begin
+              _revoke_privileges(full_group_name, type, identifier, permissions)
+            rescue PG::Error => err
+              raise err if @strict
+              next
+            end
           end
         end
       end
@@ -360,21 +425,51 @@ BANNER
       non_production_schemas = (schemas - @production_schemas)
       production_schemas = schemas.select { |schema| @production_schemas.include?(schema) }
 
-      non_production_schemas.each { |schema| _execute_statement("drop schema #{schema} cascade;") }
-      production_schemas.each { |schema| _execute_statement("alter schema #{schema} owner to #{@master_username};") }
+      non_production_schemas.each do |schema|
+        begin
+          _execute_statement("drop schema #{schema} cascade;")
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
+      end
+
+      production_schemas.each do |schema|
+        begin
+          _execute_statement("alter schema #{schema} owner to #{@master_username};")
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
+      end
     end
 
     def _revoke_all_privileges(grantee)
       (_get_current_table_acl[grantee] || {}).each do |name, privileges|
-       _revoke_privileges(grantee, 'table', name, privileges)
+        begin
+          _revoke_privileges(grantee, 'table', name, privileges)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
       end
 
       (_get_current_schema_acl[grantee] || {}).each do |name, privileges|
-       _revoke_privileges(grantee, 'schema', name, privileges)
+        begin
+          _revoke_privileges(grantee, 'schema', name, privileges)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
       end
 
       (_get_current_database_acl[grantee] || {}).each do |name, privileges|
-       _revoke_privileges(grantee, 'database', name, privileges)
+        begin
+          _revoke_privileges(grantee, 'database', name, privileges)
+        rescue PG::Error => err
+          raise err if @strict
+          next
+        end
       end
     end
 
@@ -541,8 +636,13 @@ BANNER
           current_privileges_diverged = (undefined_privileges.count + missing_privileges.count)
           unsynced_privileges += current_privileges_diverged
 
-          _revoke_privileges(grantee, identifier_type, identifier_name, undefined_privileges)
-          _grant_privileges(grantee, identifier_type, identifier_name, missing_privileges)
+          begin
+            _revoke_privileges(grantee, identifier_type, identifier_name, undefined_privileges)
+            _grant_privileges(grantee, identifier_type, identifier_name, missing_privileges)
+          rescue PG::Error => err
+            raise err if @strict
+            next
+          end
         end
       end
 
